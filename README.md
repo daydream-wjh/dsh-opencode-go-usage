@@ -1,5 +1,7 @@
 # dsh-opencode-go-usage
 
+[![test](https://github.com/daydream-wjh/dsh-opencode-go-usage/actions/workflows/test.yml/badge.svg)](https://github.com/daydream-wjh/dsh-opencode-go-usage/actions/workflows/test.yml)
+
 一个 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)（DSH）插件：在输入框上方常驻一行 **OpenCode Go 套餐限额读数**——滚动窗口 / 本周 / 本月三条额度用了多少，以及最近一次重置还剩多久。
 
 ![输入框上方的限额读数](docs/preview.png)
