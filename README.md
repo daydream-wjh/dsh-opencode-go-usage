@@ -4,7 +4,7 @@
 
 一个 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)（DSH）插件：在输入框上方常驻一行 **OpenCode Go 套餐限额读数**——滚动窗口 / 本周 / 本月三条额度用了多少，以及最近一次重置还剩多久。
 
-![输入框上方的限额读数](docs/preview.png)
+![输入框上方的限额读数（展开明细后）](docs/preview.png)
 
 ## 它显示什么
 
@@ -71,6 +71,7 @@
 ```
 GET /opencode-go/usage            → { ok: true, windows: { rolling, weekly, monthly }, fetchedAt }
 GET /opencode-go/usage?force=1    → 同上，跳过缓存
+命中缓存                          → 上一次的载荷 + { cached: true }（只需知道读数没变，不带新的 fetchedAt）
 未配置 Key                        → { ok: false, code: "no-key", message }
 Key 失效                          → { ok: false, code: "auth", message }
 上游失败 / 超时 / 结构不认识      → { ok: false, code: "upstream" | "timeout" | "network" | "payload", message }
@@ -78,6 +79,17 @@ Key 失效                          → { ok: false, code: "auth", message }
 
 失败一律 200 + `ok:false`：对一个读数组件来说「这次没读到」是常态，不是 HTTP 错误层。
 只有信任围栏（401/403）和方法（405，`Allow: GET, HEAD`）走 HTTP 语义。
+
+### 一次读数的生命周期
+
+1. 客户端挂载时读一次；之后每 60 秒（`POLL_MS`）读一次，页面切到后台就跳过这一轮，
+   切回来时若距上次读已超过 60 秒则立刻补一次。
+2. 倒计时不靠网络刷新：客户端每 30 秒（`TICK_MS`）重算一次，所以「3 小时 39 分后重置」
+   会自己往下走。
+3. 宿主侧 20 秒内命中缓存直接回，不再打上游；`?force=1` 跳过缓存。
+4. 并发读合并：同一时刻多个轮询共用同一个上游请求（`inflight`），不会打成一串。
+5. **只有成功的读数进缓存**：失败（超时、5xx、Key 失效）不缓存，下一次轮询就会重试，
+   不会让一次抖动把组件按在错误态整整 20 秒。
 
 ## 安装
 
@@ -89,6 +101,11 @@ Key 失效                          → { ok: false, code: "auth", message }
 # 凭据名固定为 OPENCODE_GO_API_KEY
 # 用 DSH 的凭据命令写入，或直接编辑 ~/.dsh/.credentials.yaml
 ```
+
+解析顺序是**先凭据库、后启动环境**：宿主先用 `ctx.get('credentials').resolve('OPENCODE_GO_API_KEY')`，
+取不到再退回 `ctx.get('launchEnvironment').get('OPENCODE_GO_API_KEY')`。
+所以不想动 `.credentials.yaml` 的话，在启动 DSH 之前 `export OPENCODE_GO_API_KEY=...` 同样有效
+（桌面版从 Dock 启动时拿不到 shell 的 export，这种情况还是写凭据库）。
 
 本插件只读 `OPENCODE_GO_API_KEY`，不读写你的 OpenCode 配置文件。
 
@@ -112,6 +129,15 @@ git clone https://github.com/daydream-wjh/dsh-opencode-go-usage.git \
 HMR 会自动重组，不用重启 DSH。客户端半边通过 `package.json` 的
 `dsh.client.platform: "web"` + `exports["./client"]` 被 `client-modules` 发现并作为
 浏览器 bundle 下发。
+
+### 装好之后
+
+输入框上方应该出现这样一行（收起状态）：
+
+![装好后的收起状态](docs/before-install.png)
+
+如果那里只有一句灰色「OpenCode Go 限额 · 未配置 OPENCODE_GO_API_KEY」，说明第 3 步已生效、
+只是第 1 步的 Key 还没写进去——这时点 `⟳` 也读不出来，回去把 Key 补上即可。
 
 ### 卸载
 
@@ -145,7 +171,8 @@ node --test verify/route.test.mjs verify/client.test.mjs
 ## 兼容性
 
 - 目标：DeepSeek Harness 桌面版，`web` 平台客户端插件。
-- 宿主半边用到的服务：`webServer`、`connection`、`credentials`。
+- 宿主半边用到的服务：`webServer`、`connection`（`inject` 声明的必需项），以及按需读取、
+  缺失也不报错的 `credentials` / `launchEnvironment`。
 - 上游：OpenCode Go 网关（`https://opencode.ai/zen/go`），用量接口未公开文档化，字段若有变动
   会归到 `code: "payload"`，不会崩溃。
 
