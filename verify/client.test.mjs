@@ -157,6 +157,20 @@ test('an unconfigured key renders one quiet line instead of an empty widget', ()
   assert.match(textOf(tree), /未配置 OPENCODE_GO_API_KEY/)
 })
 
+test('the root row refuses to shrink inside the height-constrained hero stack', () => {
+  // Regression: on the new-conversation screen the composer stack is a flex
+  // column whose height is pinned by the hero shell. As a shrinkable item with
+  // `overflow: hidden`, the row collapsed to 9px and clipped its own text; the
+  // fix is `flex: 0 0 auto` on both render roots (reading and no-key).
+  const ready = load((name) => fakeReact([readingBody(), 'ready', false, 0]))
+  assert.equal(ready.OpenCodeGoUsage().props.style.flex, '0 0 auto')
+
+  const unconfigured = load((name) => fakeReact([{ ok: false, code: 'no-key', message: '未配置 OPENCODE_GO_API_KEY' }, 'ready', false, 0]))
+  const quiet = unconfigured.OpenCodeGoUsage()
+  assert.equal(quiet.props.style.flex, '0 0 auto')
+  assert.equal(quiet.props.style.width, '100%')
+})
+
 test('parseReading drops unnamed windows and unparsable resets', () => {
   const module = load((name) => fakeReact([]))
   const parsed = module.parseReading({

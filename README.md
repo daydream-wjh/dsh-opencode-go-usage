@@ -31,6 +31,31 @@
 未配置 `OPENCODE_GO_API_KEY` 时只显示一行灰字提示，不占位；读取失败（网络、上游 5xx）
 显示错误原因，下一次轮询自动重试。
 
+### 新对话页
+
+新建对话时输入框居中放大（hero 布局），这一行仍然贴在输入框上沿、与输入框同宽同边：
+
+![新对话页上的一行读数](docs/new-conversation.png)
+
+这里是它唯一需要额外小心的地方：hero 下的输入框栈（`composerStack` + `composerHero`）是一个
+**高度被收窄**的 flex 列，标题区先吃掉整列高度，其余子项按 `flex-shrink` 分剩下的空间。
+本插件的行默认 `flex-shrink: 1`，再加上 `overflow: hidden` 会把 `min-height: auto` 折算成 0，
+于是被压成 9px 的细条、文字裁掉半截：
+
+![修复前：被压成 9px 的细条，文字被裁](docs/new-conversation-before.png)
+
+修法是让这一行退出收缩（`flex: 0 0 auto`），保住自身高度，把溢出交给 hero 列自己滚动：
+
+| 实测（1440×900，DSH 0.2.1-rc.3） | 修复前 | 修复后 |
+|---|---|---|
+| 行高（收起） | 9px，`scrollHeight` 30px，内容被裁 | 30px，无裁切 |
+| 行高（展开三条窗口） | 同样被压缩 | 130px，三行完整 |
+| 与输入框的横向对齐 | 774px，左边缘对齐 | 774px，左边缘对齐（不变） |
+
+未配置 Key 的那行灰字走同一个根节点样式，也一并钉住了；`verify/client.test.mjs`
+里有一条回归用例守住这个 `flex`。
+
+
 ## 为什么分两半
 
 | 半边 | 文件 | 职责 |
@@ -110,7 +135,12 @@ node --test verify/route.test.mjs verify/client.test.mjs
 - `verify/route.test.mjs`：用假 `fetch`、假 Cordis 上下文、假 `ServerResponse` 驱动真实宿主半边——
   窗口归一化、401/5xx/超时/脏结构的错误映射、缓存与 `force=1`、缺 Key、信任围栏与方法守卫。
 - `verify/client.test.mjs`：把真实 `lib/client.js` 放进假 `window` / 假 React 里跑，
-  检查成功 / 失败 / 未配置 Key 三种渲染、摘要文本、三条明细行和格式化函数。
+  检查成功 / 失败 / 未配置 Key 三种渲染、摘要文本、三条明细行和格式化函数，以及根节点必须带
+  `flex: 0 0 auto`（新对话页被压扁的那次回归）。
+
+上面两条都不画像素，所以新对话页的布局是拿无头 Chrome 走 CDP 量的：在 `web` profile 里加载
+真实宿主页面，读 `[data-dsh-opencode-go-usage]` 的 `clientHeight` / `scrollHeight` 判断有没有被裁，
+再和输入框卡片 `[class*="_card"]` 的 `getBoundingClientRect()` 比宽度和左边缘。
 
 ## 兼容性
 

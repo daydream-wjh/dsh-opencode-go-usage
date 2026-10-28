@@ -1,6 +1,6 @@
 {
   "name": "dsh-opencode-go-usage",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "DeepSeek Harness plugin: OpenCode Go quota readout above the composer (rolling / weekly / monthly windows with reset countdowns)",
   "type": "module",
   "main": "./lib/index.js",
