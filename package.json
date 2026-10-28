@@ -1,0 +1,45 @@
+{
+  "name": "dsh-opencode-go-usage",
+  "version": "0.1.0",
+  "description": "DeepSeek Harness plugin: OpenCode Go quota readout above the composer (rolling / weekly / monthly windows with reset countdowns)",
+  "type": "module",
+  "main": "./lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./client": "./lib/client.js",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib",
+    "verify",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "test": "node --test verify/route.test.mjs verify/client.test.mjs"
+  },
+  "keywords": [
+    "deepseek-harness",
+    "dsh",
+    "dsh-plugin",
+    "opencode",
+    "opencode-go",
+    "quota",
+    "usage"
+  ],
+  "license": "MIT",
+  "author": "daydream-wjh",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/daydream-wjh/dsh-opencode-go-usage.git"
+  },
+  "bugs": {
+    "url": "https://github.com/daydream-wjh/dsh-opencode-go-usage/issues"
+  },
+  "homepage": "https://github.com/daydream-wjh/dsh-opencode-go-usage#readme",
+  "dsh": {
+    "client": {
+      "platform": "web"
+    }
+  }
+}
